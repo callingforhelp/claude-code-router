@@ -1,0 +1,119 @@
+name: Claude Mode Examples
+
+on:
+  issue_comment:
+    types: [created]
+  issues:
+    types: [opened, labeled]
+  pull_request:
+    types: [opened]
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * 0"
+
+jobs:
+  tag-mode-example:
+    if: |
+      github.event_name != 'workflow_dispatch' &&
+      github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Prepare Environment
+        run: |
+          curl -fsSL https://bun.sh/install | bash
+          mkdir -p $HOME/.claude-code-router
+          cat << 'EOF' > $HOME/.claude-code-router/config.json
+          {
+            "LOG": true,
+            "NON_INTERACTIVE_MODE": true,
+            "OPENAI_API_KEY": "${{ secrets.OPENAI_API_KEY }}",
+            "OPENAI_BASE_URL": "https://anyrouter.top",
+            "OPENAI_MODEL": "claude-sonnet-4-20250514"
+          }
+          EOF
+        shell: bash
+
+      - name: Start Claude Code Router
+        run: |
+          ~/.bun/bin/bunx @musistudio/claude-code-router@1.0.8 start &
+          for i in {1..30}; do
+            if curl -s http://localhost:3456/health > /dev/null 2>&1; then
+              echo "Router is ready"
+              break
+            fi
+            echo "Waiting for router to start... ($i/30)"
+            sleep 2
+          done
+        shell: bash
+
+      - name: Tag Mode Claude
+        uses: anthropics/claude-code-action@beta
+        env:
+          ANTHROPIC_BASE_URL: http://localhost:3456/
+        with:
+          anthropic_api_key: "any-string-is-ok"
+
+  agent-mode-scheduled-task:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Prepare Environment
+        run: |
+          curl -fsSL https://bun.sh/install | bash
+          mkdir -p $HOME/.claude-code-router
+          cat << 'EOF' > $HOME/.claude-code-router/config.json
+          {
+            "LOG": true,
+            "NON_INTERACTIVE_MODE": true,
+            "OPENAI_API_KEY": "${{ secrets.OPENAI_API_KEY }}",
+            "OPENAI_BASE_URL": "https://anyrouter.top",
+            "OPENAI_MODEL": "claude-sonnet-4-20250514"
+          }
+          EOF
+        shell: bash
+
+      - name: Start Claude Code Router
+        run: |
+          ~/.bun/bin/bunx @musistudio/claude-code-router@1.0.8 start &
+          for i in {1..30}; do
+            if curl -s http://localhost:3456/health > /dev/null 2>&1; then
+              echo "Router is ready"
+              break
+            fi
+            echo "Waiting for router to start... ($i/30)"
+            sleep 2
+          done
+        shell: bash
+
+      - name: Agent Mode Claude
+        uses: anthropics/claude-code-action@beta
+        env:
+          ANTHROPIC_BASE_URL: http://localhost:3456/
+        with:
+          mode: agent
+          anthropic_api_key: "any-string-is-ok"
+          override_prompt: |
+            Check for outdated dependencies and security vulnerabilities.
+            Create an issue if any critical problems are found.

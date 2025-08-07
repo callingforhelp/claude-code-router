@@ -1,0 +1,67 @@
+name: Claude Auto Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  auto-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Prepare Environment
+        run: |
+          curl -fsSL https://bun.sh/install | bash
+          mkdir -p $HOME/.claude-code-router
+          cat << 'EOF' > $HOME/.claude-code-router/config.json
+          {
+            "LOG": true,
+            "NON_INTERACTIVE_MODE": true,
+            "OPENAI_API_KEY": "${{ secrets.OPENAI_API_KEY }}",
+            "OPENAI_BASE_URL": "https://anyrouter.top",
+            "OPENAI_MODEL": "claude-sonnet-4-20250514"
+          }
+          EOF
+        shell: bash
+
+      - name: Start Claude Code Router
+        run: |
+          ~/.bun/bin/bunx @musistudio/claude-code-router@1.0.8 start &
+          for i in {1..30}; do
+            if curl -s http://localhost:3456/health > /dev/null 2>&1; then
+              echo "Router is ready"
+              break
+            fi
+            echo "Waiting for router to start... ($i/30)"
+            sleep 2
+          done
+        shell: bash
+
+      - name: Automatic PR Review
+        uses: anthropics/claude-code-action@beta
+        env:
+          ANTHROPIC_BASE_URL: http://localhost:3456/
+        with:
+          anthropic_api_key: "any-string-is-ok"
+          timeout_minutes: "60"
+          direct_prompt: |
+            Please review this pull request and provide comprehensive feedback.
+
+            Focus on:
+            - Code quality and best practices
+            - Potential bugs or issues
+            - Performance considerations
+            - Security implications
+            - Test coverage
+            - Documentation updates if needed
+
+            Provide constructive feedback with specific suggestions for improvement.
+            Use inline comments to highlight specific areas of concern.
