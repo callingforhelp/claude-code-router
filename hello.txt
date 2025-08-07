@@ -1,0 +1,7 @@
+Hello, World!
+
+This is a test file created to verify MCP integration is working correctly.
+
+- File created successfully ✓
+- MCP tools are functioning ✓
+- Ready for more complex tasks ✓
