@@ -1,0 +1,6 @@
+{
+    "provider": "test-provider",
+    "apiKey": "test-key",
+    "port": 3001,
+    "host": "localhost"
+}
